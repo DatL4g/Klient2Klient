@@ -3,9 +3,8 @@ package de.datlag.k2k.connect
 import de.datlag.k2k.Host
 import de.datlag.k2k.Dispatcher
 import de.datlag.k2k.discover.Discovery
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import kotlin.properties.Delegates
 
 class Connection private constructor(
@@ -24,6 +23,18 @@ class Connection private constructor(
     }.flowOn(Dispatcher.IO)
 
     fun send(bytes: ByteArray, peer: Host) = ConnectionClient.send(bytes, peer, port, scope)
+
+    fun send(bytes: ByteArray): Flow<List<Job>> = flow {
+        coroutineScope {
+            val jobs = peers.value.map {
+                async {
+                    ConnectionClient.send(bytes, it, port, scope)
+                }
+            }
+            emit(jobs)
+            jobs.awaitAll()
+        }
+    }.flowOn(Dispatcher.IO)
 
     fun startReceiving() {
         ConnectionServer.startServer(port, scope)
