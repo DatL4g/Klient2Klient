@@ -21,14 +21,40 @@ This means any JVM project/platform can use this library, so Android and Java De
 
 ### Table of contents
 
+- [Usage](#usage)
 - [Discovery](#discovery)
   - [Make discoverable](#make-discoverable-can-be-found-by-other-hosts)
   - [Start discovery](#start-discovery-find-other-hosts)
   - [Get the found hosts](#get-the-found-hosts)
+- [Connection](#connection)
+  - [Start/Stop Receiving](#startstop-receiving)
+  - [Send/Collect data](#sendcollect-data)
+- [Contributing](#contributing)
+  - [Maintainers](#maintainers)
+- [Support the project](#support-the-project)
+
+## Usage
+
+Add the JitPack repository to your build file
+
+```gradle
+allprojects {
+  repositories {
+    ...
+    maven { url = uri("https://jitpack.io") }
+  }
+}
+```
+
+Add the dependency
+
+```gradle
+implementation("com.github.DatL4g:Klient2Klient:$latestVersion")
+```
 
 ## Discovery
 
-The discovery relies on a builder
+The discovery relies on a builder and provides the following options
 
 - ```setDiscoveryTimeout(milliSecondsOrDuration)``` after which time it stops discovering (searching for other hosts)
 - ```setDiscoveryTimeoutListener{ }``` called in IO dispatcher but is a suspend function, so you can switch context easily
@@ -45,7 +71,7 @@ The discovery relies on a builder
 The builder can be called using two different methods.
 
 ```kotlin
-val discover = Discovery.Builder(coroutneScope /* optional */)
+val discover = Discovery.Builder(coroutineScope /* optional */)
   .setPort(1337)
   .otherBuilderMethods()
   .build()
@@ -116,3 +142,87 @@ discover.peersFlow.collect { hosts ->
 }
 ```
 
+## Connection
+
+The connection relies on a builder as well with these options:
+
+- ```fromDiscovery(discover)``` just to pass the peers
+- ```forPeers(setOfHosts)``` pass the peers yourself
+- ```forPeer(host)``` only connect to one host
+- ```setPort(int)``` the port on which the connection will be established
+- ```setScope(coroutineScope)``` change the scope in which the connection jobs are running in
+- ```build()``` create an instance of Connection
+
+The builder can be used two different ways again:
+
+```kotlin
+val connect = Connection.Builder(coroutineScope /* optional */)
+  .fromDiscovery(discover)
+  .setPort(7331)
+  .build()
+```
+
+```kotlin
+val connect = coroutineScope.connection {
+  fromDiscovery(discover)
+  setPort(7331)
+}
+```
+
+### Start/Stop Receiving
+
+To start receiving just call, this will allow to get data from another host
+
+```kotlin
+  connect.startReceiving()
+```
+
+Stopping is as easy as starting
+
+```kotlin
+  connect.stopReceiving()
+```
+
+### Send/Collect data
+
+To send data to all connected hosts use
+
+```kotlin
+  connect.send(bytes)
+```
+
+To send data to one host only use
+
+```kotlin
+  connect.send(bytes, host)
+```
+
+Collecting data can be done using Flows again
+
+```kotlin
+  connect.receiveData.collect { pair: Pair<Host, ByteArray> ->
+    // received data from another host
+  }
+```
+
+## Contributing
+
+When you face any bugs or problems please open an [Issue](https://github.com/DATL4G/Klient2Klient/issues/new/choose).
+
+To add functionality fork the project and create a pull request afterwards. You should know how that works if you are a developer :)
+You can add yourself to the list below if you want then.
+
+### Maintainers
+
+| Avatar | Contributor |
+|---|:---:|
+| [![](https://avatars3.githubusercontent.com/u/46448715?s=50&v=4)](http://github.com/DatL4g) | [DatLag](http://github.com/DatL4g) |
+
+## Support the project
+
+[![Github-sponsors](https://img.shields.io/badge/sponsor-30363D?style=for-the-badge&logo=GitHub-Sponsors&logoColor=#EA4AAA)](https://github.com/sponsors/DATL4G)
+[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/datlag)
+[![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://www.patreon.com/datlag)
+
+Supporting this project helps to keep it up-to-date. You can donate if you want or contribute to the project as well.
+This shows that the library is used by people and it's worth to maintain.
