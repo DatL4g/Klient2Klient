@@ -69,15 +69,15 @@ Basically the host holds three parameter
 Call any of the following methods:
 
 ```kotlin
-discover.makeDiscoverable(Host("name", "filterMatch", jsonElement))
+discover.makeDiscoverable(Host("name", "filterMatch" /* optional */, jsonElement /* optional */))
 ```
 
 ```kotlin
-discover.makeDiscoverable("name", "filterMatch", jsonElement)
+discover.makeDiscoverable("name", "filterMatch" /* optional */, jsonElement /* optional */)
 ```
 
 ```kotlin
-discover.makeDiscoverable("name", "filterMatch", "{jsonString: true}")
+discover.makeDiscoverable("name", "filterMatch" /* optional */, "{jsonString: true}" /* optional */)
 ```
 
 To stop being discoverable imply call
