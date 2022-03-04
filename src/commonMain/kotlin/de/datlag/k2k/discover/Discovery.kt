@@ -41,10 +41,12 @@ class Discovery private constructor(
         val sendDataString: String = Constants.json.encodeToString(host)
         DiscoveryClient.startBroadcasting(port, discoverPing, sendDataString.encodeToByteArray(), scope)
         discoverableTimer.cancel()
-        discoverableTimer = scope.launch(Dispatcher.IO) {
-            delay(discoverableTimeout)
-            discoverableTimeoutListener?.invoke()
-            stopBeingDiscoverable()
+        if (discoverableTimeout > 0L) {
+            discoverableTimer = scope.launch(Dispatcher.IO) {
+                delay(discoverableTimeout)
+                discoverableTimeoutListener?.invoke()
+                stopBeingDiscoverable()
+            }
         }
     }
 
@@ -68,10 +70,12 @@ class Discovery private constructor(
     fun startDiscovery(hostIsClientToo: Boolean = hostIsClient) {
         DiscoveryServer.startListening(port, discoverPing, discoverPuffer, hostFilter, hostIsClientToo, scope)
         discoveryTimer.cancel()
-        discoveryTimer = scope.launch(Dispatcher.IO) {
-            delay(discoveryTimeout)
-            discoveryTimeoutListener?.invoke()
-            stopDiscovery()
+        if (discoveryTimeout > 0L) {
+            discoveryTimer = scope.launch(Dispatcher.IO) {
+                delay(discoveryTimeout)
+                discoveryTimeoutListener?.invoke()
+                stopDiscovery()
+            }
         }
     }
 

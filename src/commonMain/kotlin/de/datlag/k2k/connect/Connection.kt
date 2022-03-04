@@ -48,9 +48,11 @@ class Connection private constructor(
         private var peerFlow: MutableStateFlow<Set<Host>> = MutableStateFlow(setOf())
         private var port by Delegates.notNull<Int>()
 
-        fun fromDiscovery(discovery: Discovery) = apply {
+        fun fromDiscovery(discovery: Discovery) = forPeers(discovery.peersFlow)
+
+        fun forPeers(peers: Flow<Set<Host>>) = apply {
             scope.launch(Dispatcher.IO) {
-                peerFlow.emitAll(discovery.peersFlow)
+                peerFlow.emitAll(peers)
             }
         }
 
