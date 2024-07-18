@@ -12,6 +12,9 @@
 .idea/**/dictionaries
 .idea/**/shelf
 
+.kotlin
+local.properties
+
 # AWS User-specific
 .idea/**/aws.xml
 

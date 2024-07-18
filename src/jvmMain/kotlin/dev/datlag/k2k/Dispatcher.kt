@@ -1,4 +1,4 @@
-package de.datlag.k2k
+package dev.datlag.k2k
 
 import kotlinx.coroutines.Dispatchers
 
