@@ -8,6 +8,7 @@ import dev.datlag.k2k.NetInterface
 import dev.datlag.tooling.async.suspendCatching
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.openWriteChannel
+import io.ktor.utils.io.close
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -47,7 +48,8 @@ internal class DiscoveryClient : AutoCloseable {
 
             val output = socketConnection.openWriteChannel(autoFlush = true)
             output.writeFully(data, 0, data.size)
-            output.flushAndClose()
+            output.flush()
+            output.close()
             socketConnection.close()
         }
 

@@ -9,6 +9,7 @@ import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
+import io.ktor.utils.io.core.readBytes
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableSet
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.io.readByteArray
 import kotlinx.serialization.decodeFromByteArray
 
 internal class DiscoveryServer : AutoCloseable {
@@ -58,7 +58,7 @@ internal class DiscoveryServer : AutoCloseable {
             serverSocket.openReadChannel()
             serverSocket.incoming.consumeEach { datagram ->
                 suspendCatching {
-                    val receivedPacket = datagram.packet.readByteArray()
+                    val receivedPacket = datagram.packet.readBytes()
                     if (receivedPacket.isNotEmpty()) {
                         val host = Constants.protobuf.decodeFromByteArray<Host>(receivedPacket).apply {
                             val inetSocketAddress = datagram.address as InetSocketAddress
