@@ -13,7 +13,7 @@ plugins {
     signing
 }
 
-val versionName = "1.0.0"
+val versionName = "1.0.0-SNAPSHOT"
 val libName = "k2k"
 val artifact = "dev.datlag.k2k"
 

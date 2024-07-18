@@ -3,8 +3,6 @@ package dev.datlag.k2k.connect
 import kotlinx.coroutines.CoroutineScope
 import dev.datlag.k2k.Dispatcher
 import dev.datlag.k2k.Host
-import dev.datlag.k2k.connect.ConnectionClient
-import dev.datlag.k2k.connect.ConnectionServer
 import kotlinx.coroutines.launch
 import kotlin.properties.Delegates
 
@@ -61,3 +59,5 @@ class Connection private constructor(
         fun build() = Connection(port, immediate, scope)
     }
 }
+
+fun CoroutineScope.connection(builder: Connection.Builder.() -> Unit) = Connection.Builder(this).apply(builder).build()
