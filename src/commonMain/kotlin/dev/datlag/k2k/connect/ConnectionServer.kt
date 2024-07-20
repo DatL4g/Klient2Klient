@@ -48,10 +48,10 @@ internal class ConnectionServer(
                     suspendCatching {
                         val readChannel = boundSocket.openReadChannel()
                         val buffer = ByteArray(readChannel.availableForRead)
-                        while (true) {
+                        while (currentCoroutineContext().isActive) {
                             val bytesRead = readChannel.readAvailable(buffer)
                             if (bytesRead <= 0) {
-                                break
+                                continue
                             }
 
                             listener(buffer)
