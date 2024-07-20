@@ -8,6 +8,7 @@ import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.network.sockets.tcpNoDelay
+import io.ktor.utils.io.close
 import io.ktor.utils.io.writeFully
 
 internal class ConnectionClient(
@@ -35,6 +36,8 @@ internal class ConnectionClient(
         }.also {
             val channel = it.openWriteChannel(autoFlush = true)
             channel.writeFully(byteArray, 0, byteArray.size)
+            channel.flush()
+            channel.close()
         }
     }
 
