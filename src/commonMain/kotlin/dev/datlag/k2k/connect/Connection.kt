@@ -3,6 +3,7 @@ package dev.datlag.k2k.connect
 import kotlinx.coroutines.CoroutineScope
 import dev.datlag.k2k.Dispatcher
 import dev.datlag.k2k.Host
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.properties.Delegates
 
@@ -15,19 +16,36 @@ class Connection private constructor(
     private val client = ConnectionClient(immediate)
     private val server = ConnectionServer(immediate)
 
+    private var sendJob: Job? = null
+
     suspend fun sendNow(byteArray: ByteArray, peer: Host) = client.send(byteArray, peer, port)
 
-    fun send(byteArray: ByteArray, peer: Host) = scope.launch(Dispatcher.IO) {
-        sendNow(byteArray, peer)
+    fun send(byteArray: ByteArray, peer: Host) {
+        sendJob?.cancel()
+
+        sendJob = scope.launch(Dispatcher.IO) {
+            sendNow(byteArray, peer)
+        }
     }
 
     fun receive(listener: suspend (ByteArray) -> Unit) {
         server.receive(port, scope, listener)
     }
 
-    override fun close() {
+    fun stopSending() {
+        sendJob?.cancel()
+        sendJob = null
+
         client.close()
+    }
+
+    fun stopReceiving() {
         server.close()
+    }
+
+    override fun close() {
+        stopSending()
+        stopReceiving()
     }
 
     class Builder(private var scope: CoroutineScope = CoroutineScope(Dispatcher.IO)) {

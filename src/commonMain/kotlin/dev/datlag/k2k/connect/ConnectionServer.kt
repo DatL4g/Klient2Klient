@@ -36,7 +36,8 @@ internal class ConnectionServer(
         scope: CoroutineScope,
         listener: suspend (ByteArray) -> Unit
     ) {
-        receiveJob?.cancel()
+        close()
+
         receiveJob = scope.launch(Dispatcher.IO) {
             while (currentCoroutineContext().isActive) {
                 val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
