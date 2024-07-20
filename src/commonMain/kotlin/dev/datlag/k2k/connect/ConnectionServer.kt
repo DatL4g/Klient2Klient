@@ -39,28 +39,25 @@ internal class ConnectionServer(
         close()
 
         receiveJob = scope.launch(Dispatcher.IO) {
-            while (currentCoroutineContext().isActive) {
-                closeSocket()
-                val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
+            val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
 
-                connectedSocket = socket.bind(socketAddress) {
-                    reuseAddress = true
-                }.accept().also {
-                    it.use { boundSocket ->
-                        suspendCatching {
-                            val readChannel = boundSocket.openReadChannel()
-                            val buffer = ByteArray(readChannel.availableForRead)
-                            while (true) {
-                                val bytesRead = readChannel.readAvailable(buffer)
-                                if (bytesRead <= 0) {
-                                    break
-                                }
-
-                                listener(buffer)
+            connectedSocket = socket.bind(socketAddress) {
+                reuseAddress = true
+            }.accept().also {
+                it.use { boundSocket ->
+                    suspendCatching {
+                        val readChannel = boundSocket.openReadChannel()
+                        val buffer = ByteArray(readChannel.availableForRead)
+                        while (true) {
+                            val bytesRead = readChannel.readAvailable(buffer)
+                            if (bytesRead <= 0) {
+                                break
                             }
-                        }.onFailure {
-                            boundSocket.close()
+
+                            listener(buffer)
                         }
+                    }.onFailure {
+                        boundSocket.close()
                     }
                 }
             }
