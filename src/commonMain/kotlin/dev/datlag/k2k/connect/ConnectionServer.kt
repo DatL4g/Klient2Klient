@@ -5,6 +5,7 @@ import dev.datlag.k2k.NetInterface
 import dev.datlag.tooling.async.suspendCatching
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
+import io.ktor.network.sockets.ServerSocket
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
@@ -29,6 +30,7 @@ internal class ConnectionServer(
         }
     }
 
+    private var serverSocket: ServerSocket? = null
     private var connectedSocket: Socket? = null
 
     fun receive(
@@ -41,30 +43,41 @@ internal class ConnectionServer(
         receiveJob = scope.launch(Dispatcher.IO) {
             val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
 
-            connectedSocket = socket.bind(socketAddress) {
+            serverSocket = socket.bind(socketAddress) {
                 reuseAddress = true
-            }.accept().also {
-                it.use { boundSocket ->
-                    suspendCatching {
-                        val readChannel = boundSocket.openReadChannel()
-                        val buffer = ByteArray(readChannel.availableForRead)
-                        while (currentCoroutineContext().isActive) {
-                            val bytesRead = readChannel.readAvailable(buffer)
-                            if (bytesRead <= 0) {
-                                continue
-                            }
+            }
 
-                            listener(buffer)
+            while(currentCoroutineContext().isActive) {
+                connectedSocket?.close()
+                connectedSocket = serverSocket?.accept()?.also {
+                    it.use { boundSocket ->
+                        suspendCatching {
+                            val readChannel = boundSocket.openReadChannel()
+                            val buffer = ByteArray(readChannel.availableForRead)
+                            while (true) {
+                                val bytesRead = readChannel.readAvailable(buffer)
+                                if (bytesRead <= 0) {
+                                    break
+                                }
+
+                                listener(buffer)
+                            }
+                        }.onFailure {
+                            boundSocket.close()
                         }
-                    }.onFailure {
-                        boundSocket.close()
                     }
                 }
             }
         }
     }
 
-    private fun closeSocket() {
+    override fun close() {
+        receiveJob?.cancel()
+        receiveJob = null
+
+        serverSocket?.close()
+        serverSocket = null
+
         connectedSocket?.close()
         connectedSocket = null
 
@@ -75,12 +88,5 @@ internal class ConnectionServer(
                 it.tcp()
             }
         }
-    }
-
-    override fun close() {
-        receiveJob?.cancel()
-        receiveJob = null
-
-        closeSocket()
     }
 }
