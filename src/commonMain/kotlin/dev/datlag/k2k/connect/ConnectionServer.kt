@@ -40,6 +40,7 @@ internal class ConnectionServer(
 
         receiveJob = scope.launch(Dispatcher.IO) {
             while (currentCoroutineContext().isActive) {
+                closeSocket()
                 val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
 
                 connectedSocket = socket.bind(socketAddress) {
@@ -66,12 +67,9 @@ internal class ConnectionServer(
         }
     }
 
-    override fun close() {
+    private fun closeSocket() {
         connectedSocket?.close()
         connectedSocket = null
-
-        receiveJob?.cancel()
-        receiveJob = null
 
         socket = aSocket(SelectorManager(Dispatcher.IO)).let {
             if (immediate) {
@@ -80,5 +78,12 @@ internal class ConnectionServer(
                 it.tcp()
             }
         }
+    }
+
+    override fun close() {
+        receiveJob?.cancel()
+        receiveJob = null
+
+        closeSocket()
     }
 }
