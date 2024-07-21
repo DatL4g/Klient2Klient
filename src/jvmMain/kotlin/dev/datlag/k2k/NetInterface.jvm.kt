@@ -25,33 +25,16 @@ actual object NetInterface {
     }
 
     actual fun getLocalAddress(): String {
-        val allAvailable = mutableSetOf<String>()
-        val interfaces = scopeCatching {
-            NetworkInterface.getNetworkInterfaces()
-        }.getOrNull() ?: return InetAddress.getLocalHost().hostAddress
+        val candidates = NetAddress.getAll().localNetworkAddresses()
 
-        for (inter in interfaces) {
-            if (inter == null) {
-                continue
-            }
-
-            for (inet in inter.inetAddresses) {
-                if (inet == null) {
-                    continue
-                }
-
-                if (!inet.isLoopbackAddress && inet is Inet4Address) {
-                    inet.hostAddress?.ifBlank { null }?.let(allAvailable::add)
-                }
-            }
+        if (candidates.isEmpty()) {
+            return NetAddress.localHost()?.nonLocalHost()?.address
+                ?: InetAddress.getLocalHost().hostAddress
         }
 
-        if (allAvailable.isEmpty()) {
-            return InetAddress.getLocalHost().hostAddress
-        }
-
-        return allAvailable.singleOrNull() ?: scopeCatching {
-            InetAddress.getLocalHost().hostAddress?.ifBlank { null }
-        }.getOrNull() ?: allAvailable.first()
+        return candidates.singleOrNull()?.address
+            ?: NetAddress.localHost()?.nonLocalHost()?.address
+            ?: candidates.firstNotNullOfOrNull { it.address }
+            ?: InetAddress.getLocalHost().hostAddress
     }
 }
