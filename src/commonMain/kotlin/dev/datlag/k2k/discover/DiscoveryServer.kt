@@ -4,6 +4,7 @@ import dev.datlag.k2k.Constants
 import dev.datlag.k2k.Dispatcher
 import dev.datlag.k2k.Host
 import dev.datlag.k2k.NetInterface
+import dev.datlag.tooling.async.scopeCatching
 import dev.datlag.tooling.async.suspendCatching
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
@@ -26,7 +27,9 @@ import kotlinx.serialization.decodeFromByteArray
 
 internal class DiscoveryServer : AutoCloseable {
     private var listenJob: Job? = null
-    private var socket = aSocket(SelectorManager(Dispatcher.IO)).udp()
+    private var socket = scopeCatching {
+        aSocket(SelectorManager(Dispatcher.IO)).udp()
+    }.getOrNull()
     internal val hosts = MutableStateFlow<ImmutableSet<Host>>(persistentSetOf())
 
     fun listen(
@@ -47,9 +50,13 @@ internal class DiscoveryServer : AutoCloseable {
         ping: Long,
         filter: Regex,
         hostIsClient: Boolean
-    ) {
+    ) = suspendCatching {
         val socketAddress = InetSocketAddress(Constants.BROADCAST_SOCKET, port)
-        val serverSocket = socket.bind(socketAddress) {
+        val useSocket = socket ?: suspendCatching {
+            aSocket(SelectorManager(Dispatcher.IO)).udp()
+        }.getOrNull()?.also { socket = it } ?: return@suspendCatching
+
+        val serverSocket = useSocket.bind(socketAddress) {
             broadcast = true
             reuseAddress = true
         }
@@ -90,7 +97,9 @@ internal class DiscoveryServer : AutoCloseable {
     override fun close() {
         listenJob?.cancel()
         listenJob = null
-        socket = aSocket(SelectorManager(Dispatcher.IO)).udp()
+        socket = scopeCatching {
+            aSocket(SelectorManager(Dispatcher.IO)).udp()
+        }.getOrNull()
         hosts.update { persistentSetOf() }
     }
 }

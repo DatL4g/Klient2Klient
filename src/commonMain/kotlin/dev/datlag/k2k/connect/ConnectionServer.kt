@@ -2,6 +2,7 @@ package dev.datlag.k2k.connect
 
 import dev.datlag.k2k.Dispatcher
 import dev.datlag.k2k.NetInterface
+import dev.datlag.tooling.async.scopeCatching
 import dev.datlag.tooling.async.suspendCatching
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
@@ -22,13 +23,15 @@ internal class ConnectionServer(
     private val immediate: Boolean
 ) : AutoCloseable {
     private var receiveJob: Job? = null
-    private var socket = aSocket(SelectorManager(Dispatcher.IO)).let {
-        if (immediate) {
-            it.tcpNoDelay().tcp()
-        } else {
-            it.tcp()
+    private var socket = scopeCatching {
+        aSocket(SelectorManager(Dispatcher.IO)).let {
+            if (immediate) {
+                it.tcpNoDelay().tcp()
+            } else {
+                it.tcp()
+            }
         }
-    }
+    }.getOrNull()
 
     private var serverSocket: ServerSocket? = null
     private var connectedSocket: Socket? = null
@@ -38,18 +41,37 @@ internal class ConnectionServer(
         scope: CoroutineScope,
         listener: suspend (ByteArray) -> Unit
     ) {
+        receiveJob = scope.launch(Dispatcher.IO) {
+            receive(port, listener)
+        }
+    }
+
+    suspend fun receive(
+        port: Int,
+        listener: suspend (ByteArray) -> Unit
+    ) = suspendCatching {
         close()
 
-        receiveJob = scope.launch(Dispatcher.IO) {
-            val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
-
-            serverSocket = socket.bind(socketAddress) {
-                reuseAddress = true
+        val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
+        val useSocket = socket ?: suspendCatching {
+            aSocket(SelectorManager(Dispatcher.IO)).let {
+                if (immediate) {
+                    it.tcpNoDelay().tcp()
+                } else {
+                    it.tcp()
+                }
             }
+        }.getOrNull() ?: return@suspendCatching
 
-            while(currentCoroutineContext().isActive) {
-                connectedSocket?.close()
-                connectedSocket = serverSocket?.accept()?.also {
+        serverSocket = useSocket.bind(socketAddress) {
+            reuseAddress = true
+        }
+
+        while(currentCoroutineContext().isActive) {
+            connectedSocket?.close()
+
+            connectedSocket = suspendCatching {
+                serverSocket?.accept()?.also {
                     it.use { boundSocket ->
                         suspendCatching {
                             val readChannel = boundSocket.openReadChannel()
@@ -67,7 +89,7 @@ internal class ConnectionServer(
                         }
                     }
                 }
-            }
+            }.getOrNull()
         }
     }
 
@@ -81,12 +103,14 @@ internal class ConnectionServer(
         connectedSocket?.close()
         connectedSocket = null
 
-        socket = aSocket(SelectorManager(Dispatcher.IO)).let {
-            if (immediate) {
-                it.tcpNoDelay().tcp()
-            } else {
-                it.tcp()
+        socket = scopeCatching {
+            aSocket(SelectorManager(Dispatcher.IO)).let {
+                if (immediate) {
+                    it.tcpNoDelay().tcp()
+                } else {
+                    it.tcp()
+                }
             }
-        }
+        }.getOrNull()
     }
 }

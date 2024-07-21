@@ -4,6 +4,8 @@ import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.aSocket
 import dev.datlag.k2k.Dispatcher
 import dev.datlag.k2k.Host
+import dev.datlag.tooling.async.scopeCatching
+import dev.datlag.tooling.async.suspendCatching
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.openWriteChannel
@@ -15,13 +17,15 @@ internal class ConnectionClient(
     private val immediate: Boolean
 ) : AutoCloseable {
 
-    private var socket = aSocket(SelectorManager(Dispatcher.IO)).let {
-        if (immediate) {
-            it.tcpNoDelay().tcp()
-        } else {
-            it.tcp()
+    private var socket = scopeCatching {
+        aSocket(SelectorManager(Dispatcher.IO)).let {
+            if (immediate) {
+                it.tcpNoDelay().tcp()
+            } else {
+                it.tcp()
+            }
         }
-    }
+    }.getOrNull()
 
     private var connectedSocket: Socket? = null
 
@@ -29,9 +33,19 @@ internal class ConnectionClient(
         byteArray: ByteArray,
         host: Host,
         port: Int
-    ) {
+    ) = suspendCatching {
         val socketAddress = InetSocketAddress(host.hostAddress, port)
-        connectedSocket = socket.connect(socketAddress) {
+        val useSocket = socket ?: suspendCatching {
+            aSocket(SelectorManager(Dispatcher.IO)).let {
+                if (immediate) {
+                    it.tcpNoDelay().tcp()
+                } else {
+                    it.tcp()
+                }
+            }
+        }.getOrNull()?.also { socket = it } ?: return@suspendCatching
+
+        connectedSocket = useSocket.connect(socketAddress) {
             reuseAddress = true
         }.also {
             val channel = it.openWriteChannel(autoFlush = true)
@@ -45,12 +59,14 @@ internal class ConnectionClient(
         connectedSocket?.close()
         connectedSocket = null
 
-        socket = aSocket(SelectorManager(Dispatcher.IO)).let {
-            if (immediate) {
-                it.tcpNoDelay().tcp()
-            } else {
-                it.tcp()
+        socket = scopeCatching {
+            aSocket(SelectorManager(Dispatcher.IO)).let {
+                if (immediate) {
+                    it.tcpNoDelay().tcp()
+                } else {
+                    it.tcp()
+                }
             }
-        }
+        }.getOrNull()
     }
 }

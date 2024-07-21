@@ -5,6 +5,7 @@ import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.aSocket
 import dev.datlag.k2k.Dispatcher
 import dev.datlag.k2k.NetInterface
+import dev.datlag.tooling.async.scopeCatching
 import dev.datlag.tooling.async.suspendCatching
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.openWriteChannel
@@ -19,7 +20,9 @@ import kotlinx.coroutines.launch
 
 internal class DiscoveryClient : AutoCloseable {
     private var broadcastJob: Job? = null
-    private var socket = aSocket(SelectorManager(Dispatcher.IO)).udp()
+    private var socket = scopeCatching {
+        aSocket(SelectorManager(Dispatcher.IO)).udp()
+    }.getOrNull()
 
     fun broadcast(
         port: Int,
@@ -41,7 +44,11 @@ internal class DiscoveryClient : AutoCloseable {
         data: ByteArray
     ) {
         suspend fun writeToSocket(address: String, port: Int) = suspendCatching {
-            val socketConnection = socket.connect(InetSocketAddress(address, port)) {
+            val useSocket = socket ?: suspendCatching {
+                aSocket(SelectorManager(Dispatcher.IO)).udp()
+            }.getOrNull()?.also { socket = it } ?: return@suspendCatching
+
+            val socketConnection = useSocket.connect(InetSocketAddress(address, port)) {
                 broadcast = true
                 reuseAddress = true
             }
@@ -62,6 +69,8 @@ internal class DiscoveryClient : AutoCloseable {
     override fun close() {
         broadcastJob?.cancel()
         broadcastJob = null
-        socket = aSocket(SelectorManager(Dispatcher.IO)).udp()
+        socket = scopeCatching {
+            aSocket(SelectorManager(Dispatcher.IO)).udp()
+        }.getOrNull()
     }
 }
