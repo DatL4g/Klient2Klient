@@ -141,8 +141,8 @@ kotlin {
             dependencies {
                 api(libs.immutable)
                 implementation(libs.coroutines)
-                implementation(libs.ktor.network)
-                implementation(libs.ktor.network.tls)
+                implementation("io.ktor:ktor-network:3.0.0-beta-2")
+                implementation("io.ktor:ktor-network-tls:3.0.0-beta-2")
                 implementation(libs.serialization.protobuf)
                 implementation(libs.tooling)
             }

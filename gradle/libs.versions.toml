@@ -12,8 +12,8 @@ versions = "0.51.0"
 [libraries]
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "immutable" }
-ktor-network = { group = "io.ktor", name = "ktor-network", version.strictly = "3.0.0-beta-2" }
-ktor-network-tls = { group = "io.ktor", name = "ktor-network-tls", version.strictly = "3.0.0-beta-2" }
+ktor-network = { group = "io.ktor", name = "ktor-network", version.ref = "ktor" }
+ktor-network-tls = { group = "io.ktor", name = "ktor-network-tls", version.ref = "ktor" }
 serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-protobuf", version.ref = "serialization" }
 tooling = { group = "dev.datlag.tooling", name = "tooling-async", version.ref = "tooling" }
 
