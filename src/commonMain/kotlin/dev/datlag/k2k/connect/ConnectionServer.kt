@@ -11,6 +11,7 @@ import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.tcpNoDelay
+import io.ktor.utils.io.availableForRead
 import io.ktor.utils.io.core.use
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CoroutineScope
