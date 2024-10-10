@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.io.readByteArray
 import kotlinx.serialization.decodeFromByteArray
 
 internal class DiscoveryServer : AutoCloseable {
@@ -62,10 +63,9 @@ internal class DiscoveryServer : AutoCloseable {
         }
 
         while (currentCoroutineContext().isActive) {
-            serverSocket.openReadChannel()
             serverSocket.incoming.consumeEach { datagram ->
                 suspendCatching {
-                    val receivedPacket = datagram.packet.readBytes()
+                    val receivedPacket = datagram.packet.readByteArray()
                     if (receivedPacket.isNotEmpty()) {
                         val host = Constants.protobuf.decodeFromByteArray<Host>(receivedPacket).apply {
                             val inetSocketAddress = datagram.address as InetSocketAddress

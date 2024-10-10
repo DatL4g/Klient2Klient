@@ -1,11 +1,11 @@
 [versions]
 complete-kotlin = "1.1.0"
-coroutines = "1.8.1"
+coroutines = "1.9.0"
 immutable = "0.3.7"
-kotlin = "2.0.0"
-ktor = "2.3.12"
+kotlin = "2.0.20"
+ktor = "3.0.0"
 publish = "0.29.0"
-serialization = "1.7.1"
+serialization = "1.7.3"
 tooling = "1.6.2"
 versions = "0.51.0"
 

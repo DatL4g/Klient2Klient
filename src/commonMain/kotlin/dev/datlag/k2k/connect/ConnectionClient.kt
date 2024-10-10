@@ -13,18 +13,10 @@ import io.ktor.network.sockets.tcpNoDelay
 import io.ktor.utils.io.close
 import io.ktor.utils.io.writeFully
 
-internal class ConnectionClient(
-    private val immediate: Boolean
-) : AutoCloseable {
+internal class ConnectionClient : AutoCloseable {
 
     private var socket = scopeCatching {
-        aSocket(SelectorManager(Dispatcher.IO)).let {
-            if (immediate) {
-                it.tcpNoDelay().tcp()
-            } else {
-                it.tcp()
-            }
-        }
+        aSocket(SelectorManager(Dispatcher.IO)).tcp()
     }.getOrNull()
 
     private var connectedSocket: Socket? = null
@@ -36,13 +28,7 @@ internal class ConnectionClient(
     ) = suspendCatching {
         val socketAddress = InetSocketAddress(host.hostAddress, port)
         val useSocket = socket ?: suspendCatching {
-            aSocket(SelectorManager(Dispatcher.IO)).let {
-                if (immediate) {
-                    it.tcpNoDelay().tcp()
-                } else {
-                    it.tcp()
-                }
-            }
+            aSocket(SelectorManager(Dispatcher.IO)).tcp()
         }.getOrNull()?.also { socket = it } ?: return@suspendCatching
 
         connectedSocket = useSocket.connect(socketAddress) {
@@ -50,8 +36,7 @@ internal class ConnectionClient(
         }.also {
             val channel = it.openWriteChannel(autoFlush = true)
             channel.writeFully(byteArray, 0, byteArray.size)
-            channel.flush()
-            channel.close()
+            channel.flushAndClose()
         }
     }
 
@@ -60,13 +45,7 @@ internal class ConnectionClient(
         connectedSocket = null
 
         socket = scopeCatching {
-            aSocket(SelectorManager(Dispatcher.IO)).let {
-                if (immediate) {
-                    it.tcpNoDelay().tcp()
-                } else {
-                    it.tcp()
-                }
-            }
+            aSocket(SelectorManager(Dispatcher.IO)).tcp()
         }.getOrNull()
     }
 }

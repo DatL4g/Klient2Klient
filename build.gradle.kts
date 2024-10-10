@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.serialization)
-    alias(libs.plugins.complete.kotlin)
+    // alias(libs.plugins.complete.kotlin)
     alias(libs.plugins.publish)
     alias(libs.plugins.versions)
     `maven-publish`

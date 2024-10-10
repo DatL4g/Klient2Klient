@@ -7,9 +7,11 @@ import dev.datlag.k2k.Dispatcher
 import dev.datlag.k2k.NetInterface
 import dev.datlag.tooling.async.scopeCatching
 import dev.datlag.tooling.async.suspendCatching
+import io.ktor.network.sockets.Datagram
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.utils.io.close
+import io.ktor.utils.io.core.ByteReadPacket
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -53,10 +55,13 @@ internal class DiscoveryClient : AutoCloseable {
                 reuseAddress = true
             }
 
-            val output = socketConnection.openWriteChannel(autoFlush = true)
-            output.writeFully(data, 0, data.size)
-            output.flush()
-            output.close()
+            socketConnection.send(
+                Datagram(
+                    packet = ByteReadPacket(array = data),
+                    address = socketConnection.remoteAddress
+                )
+            )
+
             socketConnection.close()
         }
 

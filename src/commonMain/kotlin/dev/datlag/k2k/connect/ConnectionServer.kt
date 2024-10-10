@@ -11,6 +11,7 @@ import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.tcpNoDelay
+import io.ktor.utils.io.availableForRead
 import io.ktor.utils.io.core.use
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CoroutineScope
@@ -19,18 +20,10 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-internal class ConnectionServer(
-    private val immediate: Boolean
-) : AutoCloseable {
+internal class ConnectionServer : AutoCloseable {
     private var receiveJob: Job? = null
     private var socket = scopeCatching {
-        aSocket(SelectorManager(Dispatcher.IO)).let {
-            if (immediate) {
-                it.tcpNoDelay().tcp()
-            } else {
-                it.tcp()
-            }
-        }
+        aSocket(SelectorManager(Dispatcher.IO)).tcp()
     }.getOrNull()
 
     private var serverSocket: ServerSocket? = null
@@ -54,13 +47,7 @@ internal class ConnectionServer(
 
         val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
         val useSocket = socket ?: suspendCatching {
-            aSocket(SelectorManager(Dispatcher.IO)).let {
-                if (immediate) {
-                    it.tcpNoDelay().tcp()
-                } else {
-                    it.tcp()
-                }
-            }
+            aSocket(SelectorManager(Dispatcher.IO)).tcp()
         }.getOrNull() ?: return@suspendCatching
 
         serverSocket = useSocket.bind(socketAddress) {
@@ -104,13 +91,7 @@ internal class ConnectionServer(
         connectedSocket = null
 
         socket = scopeCatching {
-            aSocket(SelectorManager(Dispatcher.IO)).let {
-                if (immediate) {
-                    it.tcpNoDelay().tcp()
-                } else {
-                    it.tcp()
-                }
-            }
+            aSocket(SelectorManager(Dispatcher.IO)).tcp()
         }.getOrNull()
     }
 }
