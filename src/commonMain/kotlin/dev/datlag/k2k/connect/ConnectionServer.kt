@@ -19,13 +19,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 internal class ConnectionServer : AutoCloseable {
     private var receiveJob: Job? = null
-    private var socket = scopeCatching {
-        aSocket(SelectorManager(Dispatcher.IO)).tcp()
-    }.getOrNull()
-
+    private val selectorManager = SelectorManager(Dispatcher.IO)
     private var serverSocket: ServerSocket? = null
     private var connectedSocket: Socket? = null
 
@@ -39,44 +37,42 @@ internal class ConnectionServer : AutoCloseable {
         }
     }
 
-    suspend fun receive(
+    private suspend fun receive(
         port: Int,
         listener: suspend (ByteArray) -> Unit
-    ) = suspendCatching {
+    ) {
         close()
 
         val socketAddress = InetSocketAddress(NetInterface.getLocalAddress(), port)
-        val useSocket = socket ?: suspendCatching {
-            aSocket(SelectorManager(Dispatcher.IO)).tcp()
-        }.getOrNull() ?: return@suspendCatching
-
-        serverSocket = useSocket.bind(socketAddress) {
+        serverSocket = aSocket(selectorManager).tcp().bind(socketAddress) {
             reuseAddress = true
         }
 
-        while(currentCoroutineContext().isActive) {
-            connectedSocket?.close()
+        try {
+            while (currentCoroutineContext().isActive) {
+                connectedSocket?.close()
 
-            connectedSocket = suspendCatching {
-                serverSocket?.accept()?.also {
-                    it.use { boundSocket ->
-                        suspendCatching {
-                            val readChannel = boundSocket.openReadChannel()
-                            val buffer = ByteArray(readChannel.availableForRead)
-                            while (true) {
-                                val bytesRead = readChannel.readAvailable(buffer)
-                                if (bytesRead <= 0) {
-                                    break
-                                }
+                connectedSocket = serverSocket?.accept()
+                connectedSocket?.use { socket ->
+                    val readChannel = socket.openReadChannel()
 
-                                listener(buffer)
-                            }
-                        }.onFailure {
-                            boundSocket.close()
+                    while (currentCoroutineContext().isActive) {
+                        val buffer = ByteArray(4096)
+                        val bytesRead = readChannel.readAvailable(buffer)
+                        if (bytesRead <= 0) {
+                            break
                         }
+
+                        listener(buffer.copyOf(bytesRead))
                     }
                 }
-            }.getOrNull()
+            }
+        } catch (e: Throwable) {
+            if (e is CancellationException) {
+                throw e
+            }
+        } finally {
+            close()
         }
     }
 
@@ -90,8 +86,6 @@ internal class ConnectionServer : AutoCloseable {
         connectedSocket?.close()
         connectedSocket = null
 
-        socket = scopeCatching {
-            aSocket(SelectorManager(Dispatcher.IO)).tcp()
-        }.getOrNull()
+        selectorManager.close()
     }
 }

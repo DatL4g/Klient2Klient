@@ -11,32 +11,37 @@ import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.network.sockets.tcpNoDelay
 import io.ktor.utils.io.close
+import io.ktor.utils.io.core.use
 import io.ktor.utils.io.writeFully
+import kotlin.coroutines.cancellation.CancellationException
 
 internal class ConnectionClient : AutoCloseable {
 
-    private var socket = scopeCatching {
-        aSocket(SelectorManager(Dispatcher.IO)).tcp()
-    }.getOrNull()
-
+    private val selectorManager = SelectorManager(Dispatcher.IO)
     private var connectedSocket: Socket? = null
 
     suspend fun send(
         byteArray: ByteArray,
         host: Host,
         port: Int
-    ) = suspendCatching {
+    ) {
         val socketAddress = InetSocketAddress(host.hostAddress, port)
-        val useSocket = socket ?: suspendCatching {
-            aSocket(SelectorManager(Dispatcher.IO)).tcp()
-        }.getOrNull()?.also { socket = it } ?: return@suspendCatching
 
-        connectedSocket = useSocket.connect(socketAddress) {
-            reuseAddress = true
-        }.also {
-            val channel = it.openWriteChannel(autoFlush = true)
-            channel.writeFully(byteArray, 0, byteArray.size)
-            channel.flushAndClose()
+        try {
+            connectedSocket = aSocket(selectorManager).tcp().connect(socketAddress) {
+                reuseAddress = true
+            }
+
+            connectedSocket?.use { socket ->
+                val writeChannel = socket.openWriteChannel(autoFlush = true)
+
+                writeChannel.writeFully(byteArray)
+                writeChannel.flushAndClose()
+            }
+        } catch (e: Throwable) {
+            if (e is CancellationException) {
+                throw e
+            }
         }
     }
 
@@ -44,8 +49,6 @@ internal class ConnectionClient : AutoCloseable {
         connectedSocket?.close()
         connectedSocket = null
 
-        socket = scopeCatching {
-            aSocket(SelectorManager(Dispatcher.IO)).tcp()
-        }.getOrNull()
+        selectorManager.close()
     }
 }
