@@ -37,4 +37,10 @@ actual object NetInterface {
             ?: candidates.firstNotNullOfOrNull { it.address }
             ?: InetAddress.getLocalHost().hostAddress
     }
+
+    actual fun resolve(name: String): String {
+        return scopeCatching {
+            InetAddress.getByName(name).hostAddress
+        }.getOrNull()?.ifBlank { null } ?: name
+    }
 }

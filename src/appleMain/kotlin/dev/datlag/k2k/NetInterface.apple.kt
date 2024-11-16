@@ -95,4 +95,6 @@ actual object NetInterface {
         freeifaddrs(ifa.ptr)
         return address ?: ""
     }
+
+    actual fun resolve(name: String): String = name
 }

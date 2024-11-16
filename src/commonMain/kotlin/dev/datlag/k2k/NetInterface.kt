@@ -6,4 +6,5 @@ expect object NetInterface {
     // udp, no isLoopback, broadcastAddress is not null
     fun getAddresses(): ImmutableSet<String>
     fun getLocalAddress(): String
+    fun resolve(name: String): String
 }

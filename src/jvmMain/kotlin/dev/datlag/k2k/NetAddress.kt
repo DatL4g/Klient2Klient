@@ -8,7 +8,7 @@ import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
 
-data class NetAddress(
+data class NetAddress internal constructor(
     val address: String?,
     val isLoopback: Boolean,
     val isVirtual: Boolean,
@@ -33,7 +33,9 @@ data class NetAddress(
         up: Boolean
     ) : this(
         address = scopeCatching {
-            inetAddress.hostAddress?.trim()
+            scopeCatching {
+                InetAddress.getByName(inetAddress.hostAddress?.trim())
+            }.getOrNull()?.hostAddress?.ifBlank { null } ?: inetAddress.hostAddress?.trim()
         }.getOrNull()?.ifBlank { null },
         isLoopback = loopback ?: scopeCatching {
             inetAddress.isLoopbackAddress

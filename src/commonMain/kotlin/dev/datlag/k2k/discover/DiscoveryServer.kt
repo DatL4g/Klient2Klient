@@ -70,7 +70,7 @@ internal class DiscoveryServer : AutoCloseable {
                         val host = Constants.protobuf.decodeFromByteArray<Host>(receivedPacket).apply {
                             val inetSocketAddress = datagram.address as InetSocketAddress
 
-                            this.hostAddress = inetSocketAddress.hostname
+                            this.hostAddress = NetInterface.resolve(inetSocketAddress.hostname)
                         }
 
                         hosts.update {
